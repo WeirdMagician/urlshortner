@@ -24,6 +24,8 @@ func main() {
 	flag.Parse()
 	mux := defaultMux()
 
+	//bolthandler := urlshort.BoltHandler()
+
 	// Build the MapHandler using the mux as the fallback
 	pathsToUrls := map[string]string{
 		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",

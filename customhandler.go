@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/boltdb/bolt"
+
 	"gopkg.in/yaml.v2"
 )
 
@@ -22,6 +24,27 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 			fallback.ServeHTTP(w, r)
 		} else {
 			http.Redirect(w, r, redirecturl, http.StatusFound)
+		}
+	}
+}
+
+// BoltHandler will return an http.HandlerFunc (which also
+// implements http.Handler) that will attempt to map any
+// paths (keys in the db) to their corresponding URL (values
+// that each key in the db points to, in []byte format).
+// If the path is not provided in the db, then the fallback
+// http.Handler will be called instead.
+func BoltHandler(db *bolt.DB, fallback http.Handler) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var redirecturl []byte
+		db.View(func(tx *bolt.Tx) error {
+			copy(redirecturl, tx.Bucket([]byte("myBucket")).Get([]byte(r.URL.Path)))
+			return nil
+		})
+		if redirecturl == nil {
+			fallback.ServeHTTP(w, r)
+		} else {
+			http.Redirect(w, r, string(redirecturl), http.StatusFound)
 		}
 	}
 }
