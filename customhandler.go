@@ -1,8 +1,10 @@
-package urlshort
+package urlshorter
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 
 	"github.com/boltdb/bolt"
 
@@ -34,14 +36,41 @@ func MapHandler(pathsToUrls map[string]string, fallback http.Handler) http.Handl
 // that each key in the db points to, in []byte format).
 // If the path is not provided in the db, then the fallback
 // http.Handler will be called instead.
-func BoltHandler(db *bolt.DB, fallback http.Handler) http.HandlerFunc {
+func BoltHandler(fallback http.Handler) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		var redirecturl []byte
-		db.View(func(tx *bolt.Tx) error {
-			copy(redirecturl, tx.Bucket([]byte("myBucket")).Get([]byte(r.URL.Path)))
+		fmt.Print("hey\n")
+
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("recoverd", r)
+			}
+		}()
+
+		db, err := bolt.Open("C:\\Users\\kh2398\\go\\src\\github.com\\WeirdMagician\\urlshortner\\main\\my.db", 0666, nil)
+		fmt.Print("redirecturl", "redirecturl\n")
+
+		if err != nil {
+			fmt.Print(err)
+		}
+		defer func() {
+			if r := recover(); r != nil {
+				fmt.Println("recoverd", r)
+			}
+			db.Close()
+		}()
+
+		var redirecturl string
+		err = db.View(func(tx *bolt.Tx) error {
+			fmt.Fprint(os.Stdout, tx.Bucket([]byte("myBucket")).Get([]byte(r.URL.Path)), "tredirecturl\n")
+
+			redirecturl = string(tx.Bucket([]byte("myBucket")).Get([]byte(r.URL.Path)))
+			fmt.Fprint(os.Stdout, redirecturl, "redirecturl\n")
 			return nil
 		})
-		if redirecturl == nil {
+		if err != nil {
+			fmt.Print(err)
+		}
+		if redirecturl == "" {
 			fallback.ServeHTTP(w, r)
 		} else {
 			http.Redirect(w, r, string(redirecturl), http.StatusFound)

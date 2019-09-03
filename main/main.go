@@ -7,7 +7,9 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/WeirdMagician/urlshort"
+	"github.com/boltdb/bolt"
+
+	urlshort "github.com/WeirdMagician/urlshortner"
 )
 
 func main() {
@@ -24,14 +26,38 @@ func main() {
 	flag.Parse()
 	mux := defaultMux()
 
-	//bolthandler := urlshort.BoltHandler()
+	fmt.Print("started")
+
+	db, err := bolt.Open("C:\\Users\\kh2398\\go\\src\\github.com\\WeirdMagician\\urlshortner\\main\\my.db", 0666, nil)
+	defer db.Close()
+
+	if err != nil {
+		log.Fatal(err)
+	}
+	err = db.Batch(func(tx *bolt.Tx) error {
+		b, err := tx.CreateBucketIfNotExists([]byte("myBucket"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		err = b.Put([]byte("/bolt"), []byte("https://github.com/boltdb/bolt"))
+		if err != nil {
+			log.Fatal(err)
+		}
+		return nil
+	})
+	if err != nil {
+		log.Fatal(err)
+	}
+	db.Close()
+
+	bolthandler := urlshort.BoltHandler(mux)
 
 	// Build the MapHandler using the mux as the fallback
 	pathsToUrls := map[string]string{
 		"/urlshort-godoc": "https://godoc.org/github.com/gophercises/urlshort",
 		"/yaml-godoc":     "https://godoc.org/gopkg.in/yaml.v2",
 	}
-	mapHandler := urlshort.MapHandler(pathsToUrls, mux)
+	mapHandler := urlshort.MapHandler(pathsToUrls, bolthandler)
 
 	// Build the YAMLHandler using the mapHandler as the
 	// fallback
